@@ -93,9 +93,14 @@ Current problems:
   - Does it actually work in web request? No idea, only tested in command
     line "tests".
 
+  - No packaging. I haven't ever done proper packaging of a Python project
+    so will need to investigate that.
+
 How to help:
   - Currently there isn't much to do, expect test and spot errors in the
     code.
 
+Once more: this is very immature software. DO NOT USE IN PRODUCTION!
+
 Author: Anssi Kääriäinen
-License: BSD
+License: BSD (See the LICENSE file)
