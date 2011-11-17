@@ -1,0 +1,101 @@
+This project's aim is to create a pooled psycopg2 backend for Django. The
+new pooled backend extends the postgresql-psycopg2 backend of Django.
+
+Status: Somewhat working. Passes all the tests, but crashes on test database
+dropping. This is because some connections are left open in select_for_update
+tests. See "Problems" -section for more information.
+
+You can get some nice speedup from this. For a test where "select 1",
+connection.close() is executed repeatedly, I get 5x performance improvement.
+In general, you could expect some nice speedups for cases where you run
+just a few simple queries. The prepared plan interface allows for 50%+
+speedup for a query if the conditions are right.
+
+Usage: download and install the code manually in your Python path. Set
+ENGINE to the module containing base.py. Use it. There are many settings,
+read the source.
+
+
+If the above didn't make it clear, this is very much WIP. I am not sure
+if anything usable will result from this. I hope so. Currently, do not use
+except for testing purposes.
+
+Intended features:
+  - Pooled connections.
+      Status: Implemented and somewhat working.
+      Usage: Read The Source (RTS). HINT: above is how to get it somewhat
+             working.
+
+  - Rewriting of queries. Main purpose is to allow usage of prepared queries.
+    This can result in major speedup if the following conditions apply: 1)
+    The data amount to fetch from the DB is small, 2) the query can use
+    indexes, 3) the query is complex (many joins) and 4) Postgresql is smart
+    enough to generate a good plan for the prepared plan. Sometimes the plan
+    is not as good as when running the query directly.
+      Status: draft implementation ready, needs lots of work still.
+      Usage: read the source. HINT: conn.database.add_prepare_target(qs)
+
+  - Tracking of idle in transaction or just idle connections. When using
+    Django's ORM it is really easy to left open connections behind. The
+    tracking will be able to show you the stack trace where the connection
+    was last opened, the stack of where a cursor was last taken and the
+    stack of where a query was last executed.
+      Status: draft implementation ready. Needs work. No tb for last cursor
+              / last execute locations yet.
+      Usage: rts, HINT: conn.database.as_table(),
+                        conn.database.idle_in_tx_stacks()
+
+  - Logging most common queries, and the average runtime for them.
+      Status: Nothing worth mentioning implemented.
+      Usage: Not usable at all.
+
+  - Allow pooling for different backends. I had something working for really
+    simple queries for pg8000, but the problem is pg8000 uses extended query
+    protocol, while psycopg2 uses the simple query protocol. This means that
+    queries like .execute("set time zone to %s", (tz,)) will not work on
+    pg8000. This is executed every time a new connection is made in Django.
+    If pg8000 would allow switching to simple query protocol, this would be
+    probably doable.
+      Status: Tied to psycopg2 currently.
+
+  - Configurability. Currently there are some config options, but they are
+    global and apply to all pools. It would be nice if the configurability
+    could be done per pool, and done programmatically.
+      Status: TODO
+
+  - It would be really cool if the pool status, idle in tx stacks and query
+    reports where available using a web interface. Unfortunately this is also
+    really hard. Django is usually run in multiple processes, and it is
+    common to have more than one server for single site. This means the web
+    interface would need to somehow aggregate data from multiple processes on
+    multiple servers. I have no idea how to do that.
+      Status: Pipe dream. Ideas welcome.
+
+
+Current problems:
+  - Cleaner thread. Currently there is a backgroung daemon thread cleaning
+    all the pools. Threads do come with some problems. The biggest one I have
+    seen is that sometimes exit from the program will error, and I have
+    gotten one total lockup on exit.
+      Solution: Allow disabling of the cleaner thread. Cleaning would then
+                happen in conjuction of creating and closing connections.
+
+  - Connection pool does not use weakrefs. This means that when a connection
+    would be closed because it is garbage collected, it stays open still.
+    This is only a problem if you do separate connections or use threading
+    with connections. In web-usage connections are always explicitly closed
+    after the request, so in that use case this will not be a problem.
+      Solution: use weakrefs for connections leased out of the pool.
+
+  - Tests missing. This kind of software would naturally need an extensive
+    test suite. None implemented currently.
+
+  - Does it actually work in web request? No idea, only tested in command
+    line "tests".
+
+How to help:
+  - Currently there isn't much to do, expect test and spot errors in the
+    code.
+
+Author: Anssi Kääriäinen
+License: BSD
