@@ -1,30 +1,28 @@
 This project's aim is to create a pooled psycopg2 backend for Django. The
 new pooled backend extends the postgresql-psycopg2 backend of Django.
 
-Status: Somewhat working. Passes all the tests, but crashes on test database
-dropping. This is because some connections are left open in select_for_update
-tests. See "Problems" -section for more information.
+Status: Somewhat working. Passes all the Django's tests. Completely untested
+in anything resembling production environment, though.
 
 You can get some nice speedup from this. For a test where "select 1",
 connection.close() is executed repeatedly, I get 5x performance improvement.
 In general, you could expect some nice speedups for cases where you run
 just a few simple queries. The prepared plan interface allows for 50%+
-speedup for a query if the conditions are right.
+speedup if the conditions are right.
 
 Usage: download and install the code manually in your Python path. Set
 ENGINE to the module containing base.py. Use it. There are many settings,
 read the source.
 
-
 If the above didn't make it clear, this is very much WIP. I am not sure
 if anything usable will result from this. I hope so. Currently, do not use
-except for testing purposes.
+except for testing purposes. Do not use in production.
 
 Intended features:
   - Pooled connections.
       Status: Implemented and somewhat working.
-      Usage: Read The Source (RTS). HINT: above is how to get it somewhat
-             working.
+      Usage: Read The Source (RTS). HINT: above is some ideas about how to get
+             it somewhat working.
 
   - Rewriting of queries. Main purpose is to allow usage of prepared queries.
     This can result in major speedup if the following conditions apply: 1)
@@ -64,7 +62,7 @@ Intended features:
       Status: TODO
 
   - It would be really cool if the pool status, idle in tx stacks and query
-    reports where available using a web interface. Unfortunately this is also
+    reports were available using a web interface. Unfortunately this is also
     really hard. Django is usually run in multiple processes, and it is
     common to have more than one server for single site. This means the web
     interface would need to somehow aggregate data from multiple processes on
@@ -80,15 +78,12 @@ Current problems:
       Solution: Allow disabling of the cleaner thread. Cleaning would then
                 happen in conjuction of creating and closing connections.
 
-  - Connection pool does not use weakrefs. This means that when a connection
-    would be closed because it is garbage collected, it stays open still.
-    This is only a problem if you do separate connections or use threading
-    with connections. In web-usage connections are always explicitly closed
-    after the request, so in that use case this will not be a problem.
-      Solution: use weakrefs for connections leased out of the pool.
+  - The pool of pools keeps references to unused pools. Will need to
+    investigate this. For some reason DatabaseWrapper.__del__ seems to be not
+    called. Another investigation target.
 
   - Tests missing. This kind of software would naturally need an extensive
-    test suite. None implemented currently.
+    test suite.
 
   - Does it actually work in web request? No idea, only tested in command
     line "tests".
