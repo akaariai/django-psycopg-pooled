@@ -1,3 +1,5 @@
+PROJECT DEPRECATED! DO NOT USE!
+
 This project's aim is to create a pooled psycopg2 backend for Django. The
 new pooled backend extends the postgresql-psycopg2 backend of Django.
 
